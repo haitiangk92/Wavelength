@@ -21,6 +21,9 @@ BOARD_WIDTH_OFFET = (WINDOW_WIDTH - BOARD_WIDTH)/2
 BOARD_HEIGHT_OFFET = TITLE_AREA
 BOARD_COLOR = COLORS.BLUE
 
+follow_mouseX = false
+last_mouse_point = 0
+
 CIRCLE_ORIGIN = {
     x = WINDOW_WIDTH/2,
     y = WINDOW_HEIGHT/2 + 50
@@ -109,7 +112,9 @@ SHIELD = {
 }
 
 WAVE_WHEEL = {
-    radius = GEAR_CIRCLE.radius - 20
+    radius = GEAR_CIRCLE.radius - 20,
+    isSpinning = false,
+    speed = 0
 }
 
 GAME_STATE = {
@@ -122,7 +127,6 @@ GAME_STATE = {
 }
 
 local shield_transformation = -3
-local speed_modifier = 0
 local delta = (math.rad(1) - math.rad(0)) * -shield_transformation
 local shield_name_selector = 1
 
@@ -130,7 +134,7 @@ Team1 = Team:new("1")
 Team2 = Team:new("2")
 
 SHIELD_BUTTON = Button:new()
-SPIN_BUTTON = Button:new("Sin")
+SPIN_BUTTON = Button:new()
 
 ---------------------------------------------
 --- Sets up the original state of the game
@@ -160,6 +164,20 @@ function love.load()
 
         SPOKES[i] = spoke
     end
+
+    -- Creating Spin Button
+    local spinOffest = { 150,75 }
+
+    SPIN_BUTTON:setCoords(
+        CIRCLE_ORIGIN.x - spinOffest[1] - 125, 
+        CIRCLE_ORIGIN.y + spinOffest[2] - 40, 
+        CIRCLE_ORIGIN.x - spinOffest[2], 
+        CIRCLE_ORIGIN.y + spinOffest[1] - 40
+    )
+
+    SPIN_BUTTON:setButtonColor(COLORS.WHITE)
+    SPIN_BUTTON:setTextColor(COLORS.PURPLE)
+    SPIN_BUTTON.text = "SPIN"
 
     -- Creating a list of triangles that will determine the scores
     last_angle = 0
@@ -222,7 +240,7 @@ function love.load()
         TRIANGLES[i] = triangle
     end
 
-    -- print_table(TRIANGLES)
+    -- print_table(TRIANGLES) -- DEBUG
 
     -- Creating shield that will cover the "waves region"
     SHIELD.handle.inner_point.radius = NEEDLE.height + 40
@@ -257,27 +275,28 @@ end
 --------------------------------------------
 function love.update(dt)
     -- Controls the speed at which things spin
-    if speed_modifier > 0 then
-        speed_modifier = speed_modifier - math.random(4)*dt
+    WAVE_WHEEL.isSpinning = WAVE_WHEEL.speed > 0
+    if WAVE_WHEEL.isSpinning then
+        WAVE_WHEEL.speed = WAVE_WHEEL.speed - math.random(4)*dt
     else
-        speed_modifier = 0
+        WAVE_WHEEL.speed = 0
     end
 
     -- Spinning the wheel
     for i = 1, #SPOKES do
         local spoke = SPOKES[i]
         
-        spoke.angle = spoke.angle + speed_modifier*dt
+        spoke.angle = spoke.angle + WAVE_WHEEL.speed*dt
         spoke.x = CIRCLE_ORIGIN.x + (math.cos(spoke.angle) * spoke.height)
         spoke.y = CIRCLE_ORIGIN.y + (math.sin(spoke.angle) * spoke.height)
     end
 
     for i = 1, #TRIANGLES do
         local triangle = TRIANGLES[i]
-        triangle.angles.left = triangle.angles.left + speed_modifier*dt
-        triangle.angles.right = triangle.angles.right + speed_modifier*dt
-        triangle.points.angle = triangle.points.angle + speed_modifier*dt
-        triangle.points.rotation = triangle.points.rotation + speed_modifier*dt
+        triangle.angles.left = triangle.angles.left + WAVE_WHEEL.speed*dt
+        triangle.angles.right = triangle.angles.right + WAVE_WHEEL.speed*dt
+        triangle.points.angle = triangle.points.angle + WAVE_WHEEL.speed*dt
+        triangle.points.rotation = triangle.points.rotation + WAVE_WHEEL.speed*dt
 
         triangle.vertices[3] = CIRCLE_ORIGIN.x + (math.cos(triangle.angles.left) * WAVE_WHEEL.radius)
         triangle.vertices[4] = CIRCLE_ORIGIN.y + (math.sin(triangle.angles.left) * WAVE_WHEEL.radius)
@@ -319,7 +338,20 @@ function love.update(dt)
     SHIELD.handle.outer_point.y = CIRCLE_ORIGIN.y + (math.sin(SHIELD.ending_angle) * SHIELD.handle.outer_point.radius)
 
     -- Moving the needle
+    if love.mouse.isDown(1) then
+        if follow_mouseX then
+            local currentMouseX, currentMouseY = love.mouse.getPosition()
+            local deltaMouseY = last_mouse_point - currentMouseY
 
+            NEEDLE.angle = math.min(math.max(NEEDLE.angle + deltaMouseY/2*dt,math.rad(180)),math.rad(360))
+            NEEDLE.x = CIRCLE_ORIGIN.x + (math.cos(NEEDLE.angle) * NEEDLE.height)
+            NEEDLE.y = CIRCLE_ORIGIN.y + (math.sin(NEEDLE.angle) * NEEDLE.height)
+
+            last_mouse_point = currentMouseY
+        end
+    else
+        follow_mouseX = false
+    end
     -- Add points
 
     -- Change states
@@ -417,6 +449,24 @@ function love.draw()
 
 
     -- Drawing spin button to the screen
+    love.graphics.setColor(unpack(SPIN_BUTTON.btn_color))
+    love.graphics.rectangle("fill",
+        SPIN_BUTTON.coords.top_left.x,
+        SPIN_BUTTON.coords.top_left.y,
+        math.abs(SPIN_BUTTON.coords.top_left.x - SPIN_BUTTON.coords.bottom_right.x),
+        math.abs(SPIN_BUTTON.coords.top_left.y - SPIN_BUTTON.coords.bottom_right.y),
+        20,20
+    )
+
+    love.graphics.setNewFont(60)
+    love.graphics.setColor(SPIN_BUTTON.txt_color)
+    love.graphics.printf(
+        SPIN_BUTTON.text, 
+        SPIN_BUTTON.coords.top_left.x,
+        SPIN_BUTTON.coords.top_left.y + 5,
+        math.abs(SPIN_BUTTON.coords.top_left.x - SPIN_BUTTON.coords.bottom_right.x),
+        "center"
+    )
 
     -- Drawing Prompt
 
@@ -431,22 +481,19 @@ end
 
 
 function love.mousepressed(x,y,button,istouch,presses)
+    mouseCoords = {x,y}
     if button == 1 then
-        -- speed_modifier = speed_modifier + math.random(5,15)
-        -- print(x,y)
-        if mouseIsOnButton({x,y},SHIELD_BUTTON) then --and GAME_STATE.Secret then
-            if shield_name_selector > 0 then
-                text = "CLOSE"
-            else
-                text = "OPEN"
-            end
+        if mouseIsOnButton(mouseCoords,SHIELD_BUTTON) then --and GAME_STATE.Secret then
             SHIELD_BUTTON:isClicked(toggleShield,{text})
-            shield_name_selector = -shield_name_selector
-        
         end
 
-        if mouseIsOnKnob({x,y}) then
-            
+        if mouseIsOnKnob(mouseCoords) then
+           follow_mouseX = true 
+           last_mouse_point = y
+        end
+
+        if mouseIsOnButton(mouseCoords, SPIN_BUTTON) then
+            SPIN_BUTTON:isClicked(spinWheel)
         end
     end
 end
@@ -496,8 +543,22 @@ function mouseIsOnKnob(mousePos)
 end
 
 
-function toggleShield(text)
+function toggleShield()
+    if shield_name_selector > 0 then
+        text = "CLOSE"
+    else
+        text = "OPEN"
+    end
+    shield_name_selector = -shield_name_selector
+
     shield_transformation = -shield_transformation
     SHIELD.transformation = shield_transformation
     SHIELD_BUTTON.text = text
+end
+
+
+function spinWheel()
+    if not WAVE_WHEEL.isSpinning then
+        WAVE_WHEEL.speed = WAVE_WHEEL.speed + math.random(5,15)
+    end
 end
