@@ -1,13 +1,10 @@
-Team = require "Team"
-Player = require "Player"
+function print_table(table, level)
+    level = level or 0
+    for k, v in pairs(table) do
+        print(string.rep("\t",level)..k, v)
+        if type(v) == "table" then
+            print_table(v,level + 1)
+        end
+    end
+end
 
-team1 = Team:new("Hornets")
-team1:scored(10)
-team1:scored(3)
- 
-playerJohn = Player:new("John")
-team1:addPlayer(playerJohn)
-
-team1:tostring()
-
-print(math.rad(180) - math.rad(181))

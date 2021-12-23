@@ -1,0 +1,15 @@
+Inflexible,Flexible
+Guilty Pleasure,Openly Love
+Round,Pointy
+Ugly Man,Beautiful Man
+Low Quality,High Quality
+Useless Invention,Useful Invention
+Dark,Light
+Stupid Person,Smart Person
+Boring Activity,Fun Activity
+Childish,Grown up
+Good Company,Evil Company
+Small,Big
+Bald,Hairy
+Tall Person,Short Person
+Unpopular,Popular
