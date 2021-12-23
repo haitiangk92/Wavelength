@@ -4,6 +4,7 @@ COLORS = require "Colors"
 Team = require "Team"
 Player = require "Player"
 Button = require "Button"
+Prompt_List = require  "Prompt_List"
 
 WINDOW_WIDTH, WINDOW_HEIGHT = love.window.getDesktopDimensions()
 
@@ -132,9 +133,32 @@ local shield_name_selector = 1
 
 Team1 = Team:new("1")
 Team2 = Team:new("2")
+prompt_list = Prompt_List:new()
 
 SHIELD_BUTTON = Button:new()
 SPIN_BUTTON = Button:new()
+
+PROMPT_CARD = {
+    left = {
+        card_color = 0,
+        text = ""
+    },
+    right = {
+        card_color = 0,
+        text = ""
+    },
+    text_color = 0,
+    coords = {
+        top_left = {
+            x = 0,
+            y = 0
+        },
+        bottom_right = {
+            x = 0,
+            y = 0
+        }
+    } 
+}
 
 ---------------------------------------------
 --- Sets up the original state of the game
@@ -268,6 +292,18 @@ function love.load()
     NEEDLE.angle = math.rad(math.random(180,360))
     NEEDLE.x = CIRCLE_ORIGIN.x + (math.cos(NEEDLE.angle) * NEEDLE.height)
     NEEDLE.y = CIRCLE_ORIGIN.y + (math.sin(NEEDLE.angle) * NEEDLE.height)
+
+    PROMPT_CARD.coords.top_left.x = CIRCLE_ORIGIN.x - 175
+    PROMPT_CARD.coords.top_left.y = CIRCLE_ORIGIN.y + 175
+    PROMPT_CARD.coords.bottom_right.x = CIRCLE_ORIGIN.x + 175
+    PROMPT_CARD.coords.bottom_right.y = CIRCLE_ORIGIN.y + 325
+
+    local prompt = prompt_list[math.random(#Prompt_List)]
+    PROMPT_CARD.left.card_color = {math.random(),math.random(),math.random()}
+    PROMPT_CARD.left.text = prompt[1]
+    PROMPT_CARD.right.card_color = {math.random(),math.random(),math.random()}
+    PROMPT_CARD.right.text = prompt[2]
+
 end
 
 --------------------------------------------
@@ -469,6 +505,35 @@ function love.draw()
     )
 
     -- Drawing Prompt
+    local card_width = math.abs(PROMPT_CARD.coords.top_left.x - PROMPT_CARD.coords.bottom_right.x)/2
+    local card_mid = PROMPT_CARD.coords.top_left.x + card_width
+    love.graphics.setColor(unpack(PROMPT_CARD.left.card_color))
+    love.graphics.rectangle("fill",
+        PROMPT_CARD.coords.top_left.x,
+        PROMPT_CARD.coords.top_left.y,
+        card_width,
+        math.abs(PROMPT_CARD.coords.top_left.y - PROMPT_CARD.coords.bottom_right.y),
+        5,5
+    )
+
+    love.graphics.setColor(unpack(PROMPT_CARD.right.card_color))
+    love.graphics.rectangle("fill",
+        card_mid,
+        PROMPT_CARD.coords.top_left.y,
+        card_width,
+        math.abs(PROMPT_CARD.coords.top_left.y - PROMPT_CARD.coords.bottom_right.y),
+        5,5
+    )
+
+    -- love.graphics.setNewFont(60)
+    -- love.graphics.setColor(SPIN_BUTTON.txt_color)
+    -- love.graphics.printf(
+    --     SPIN_BUTTON.text, 
+    --     SPIN_BUTTON.coords.top_left.x,
+    --     SPIN_BUTTON.coords.top_left.y + 5,
+    --     math.abs(SPIN_BUTTON.coords.top_left.x - SPIN_BUTTON.coords.bottom_right.x),
+    --     "center"
+    -- )
 
 end
 
