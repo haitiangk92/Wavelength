@@ -7,4 +7,3 @@ function print_table(table, level)
         end
     end
 end
-

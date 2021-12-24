@@ -9,7 +9,8 @@ Prompt_List = require  "Prompt_List"
 WINDOW_WIDTH, WINDOW_HEIGHT = love.window.getDesktopDimensions()
 
 TITLE = "Wavelength"
-TITLE_FONT = love.graphics.setNewFont(75)
+TITLE_FONT_SIZE = 75
+TITLE_FONT = love.graphics.setNewFont(TITLE_FONT_SIZE)
 TITLE_WIDTH = TITLE_FONT.getWidth(TITLE_FONT,TITLE)
 TITLE_HEIGHT = TITLE_FONT.getHeight(TITLE_FONT)
 TITLE_WIDTH_OFFSET = (WINDOW_WIDTH - TITLE_WIDTH)/2
@@ -115,16 +116,33 @@ SHIELD = {
 WAVE_WHEEL = {
     radius = GEAR_CIRCLE.radius - 20,
     isSpinning = false,
-    speed = 0
+    speed = 0,
+    points_zone = {
+        left = {
+            min = math.pi,
+            max = NEEDLE.angle,
+            opacity = 0,
+            opacity_delta = 0,
+            selected = false
+        },
+        right = {
+            min = NEEDLE.angle,
+            max = math.pi * 2,
+            opacity = 0,
+            opacity_delta = 0,
+            selected = false
+        }
+    }
 }
 
-GAME_STATE = {
-    Prep = false,
-    Spin = false,
-    Secret = false,
-    Active_Team_Guess = false,
-    Opposing_Team_Guess = false,
-    Reveal = false
+GAME_STATE = 0
+GAME_STATES = {
+    PREP = 0,
+    SPIN = 1,
+    SECRET = 2,
+    GUESS = 3,
+    CHALLENGE = 4,
+    REAVEAL = 5
 }
 
 local shield_transformation = -3
@@ -159,6 +177,7 @@ PROMPT_CARD = {
         }
     } 
 }
+
 
 ---------------------------------------------
 --- Sets up the original state of the game
@@ -266,6 +285,7 @@ function love.load()
 
     -- print_table(TRIANGLES) -- DEBUG
 
+
     -- Creating shield that will cover the "waves region"
     SHIELD.handle.inner_point.radius = NEEDLE.height + 40
     SHIELD.handle.outer_point.radius = WAVE_WHEEL.radius + 60
@@ -274,6 +294,8 @@ function love.load()
     SHIELD.handle.outer_point.x = CIRCLE_ORIGIN.x - SHIELD.handle.outer_point.radius
     SHIELD.handle.outer_point.y = CIRCLE_ORIGIN.y
 
+    left_arc = WAVE_WHEEL.points_zone.left
+    right_arc = WAVE_WHEEL.points_zone.right
     -- Creating Shield Toggle Button
     local shieldOffest = { 75,150 }
 
@@ -298,13 +320,13 @@ function love.load()
     PROMPT_CARD.coords.bottom_right.x = CIRCLE_ORIGIN.x + 175
     PROMPT_CARD.coords.bottom_right.y = CIRCLE_ORIGIN.y + 325
 
-    local prompt = prompt_list[math.random(#Prompt_List)]
+    setRandomPrompt()
     PROMPT_CARD.left.card_color = {math.random(),math.random(),math.random()}
-    PROMPT_CARD.left.text = prompt[1]
     PROMPT_CARD.right.card_color = {math.random(),math.random(),math.random()}
-    PROMPT_CARD.right.text = prompt[2]
+    PROMPT_CARD.text_color = COLORS.WHITE
 
 end
+
 
 --------------------------------------------
 --- Gets called every computer clock tick
@@ -331,7 +353,7 @@ function love.update(dt)
         local triangle = TRIANGLES[i]
         triangle.angles.left = triangle.angles.left + WAVE_WHEEL.speed*dt
         triangle.angles.right = triangle.angles.right + WAVE_WHEEL.speed*dt
-        triangle.points.angle = triangle.points.angle + WAVE_WHEEL.speed*dt
+        triangle.points.angle = (triangle.points.angle + WAVE_WHEEL.speed*dt) % (math.pi * 2)
         triangle.points.rotation = triangle.points.rotation + WAVE_WHEEL.speed*dt
 
         triangle.vertices[3] = CIRCLE_ORIGIN.x + (math.cos(triangle.angles.left) * WAVE_WHEEL.radius)
@@ -342,6 +364,47 @@ function love.update(dt)
         triangle.points.x = CIRCLE_ORIGIN.x + (math.cos(triangle.points.angle) * (WAVE_WHEEL.radius - 25))
         triangle.points.y = CIRCLE_ORIGIN.y + (math.sin(triangle.points.angle) * (WAVE_WHEEL.radius - 25))
     end
+
+    -- Show challenge opacity
+    dtt = 0.06
+
+    left_arc.max = NEEDLE.angle
+    if mouseIsOnArc({love.mouse.getPosition()},left_arc)then
+        if not left_arc.selected then
+            if left_arc.opacity >= 1 then
+                left_arc.opacity = 1
+                left_arc.opacity_delta = -dtt
+            elseif left_arc.opacity <= 0 then
+                left_arc.opacity = 0
+                left_arc.opacity_delta = dtt
+            end
+        end
+    else
+        if not left_arc.selected then
+            left_arc.opacity = 0
+            left_arc.opacity_delta = 0
+        end
+    end
+    left_arc.opacity = left_arc.opacity + left_arc.opacity_delta
+    
+    right_arc.min = NEEDLE.angle
+    if mouseIsOnArc({love.mouse.getPosition()},right_arc) then
+        if not right_arc.selected then
+            if right_arc.opacity >= 1 then
+                right_arc.opacity = 1
+                right_arc.opacity_delta = -dtt
+            elseif right_arc.opacity <= 0 then
+                right_arc.opacity = 0
+                right_arc.opacity_delta = dtt
+            end
+        end
+    else
+        if not right_arc.selected then
+            right_arc.opacity = 0
+            right_arc.opacity_delta = 0
+        end
+    end
+    right_arc.opacity = right_arc.opacity + right_arc.opacity_delta
 
     -- Openning/Closing the shield
     if SHIELD.transformation < 0 then
@@ -394,6 +457,7 @@ function love.update(dt)
 
 end
 
+
 ----------------------------------
 --- Called after each update
 ----------------------------------
@@ -403,6 +467,7 @@ function love.draw()
 
     -- Printing the title to the screen
     love.graphics.setColor(1,1,1)
+    love.graphics.setNewFont(TITLE_FONT_SIZE)
     love.graphics.print(TITLE,TITLE_WIDTH_OFFSET,TITLE_HEIGHT_OFFSET)
 
     -- Printing the game board to the screen
@@ -422,7 +487,7 @@ function love.draw()
     -- Drawing Score Triangles
     for i = 1, #TRIANGLES do
         local triangle = TRIANGLES[i]
-        love.graphics.setColor(unpack(triangle.color))
+        love.graphics.setColor(triangle.color)
         love.graphics.polygon("fill",triangle.vertices)
         love.graphics.setColor(0,0,0)
         love.graphics.print(tostring(triangle.points.value),triangle.points.x,triangle.points.y,triangle.points.rotation,.25)
@@ -431,6 +496,12 @@ function love.draw()
     -- Drawing the shield to the screen
     love.graphics.setColor(unpack(SHIELD.color))
     love.graphics.arc("fill", CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y, WAVE_WHEEL.radius, SHIELD.starting_angle, SHIELD.ending_angle)
+
+    -- Drawing challenge zone to the screen
+    love.graphics.setColor(1,1,1,WAVE_WHEEL.points_zone.left.opacity)
+    love.graphics.arc("fill", CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y,WAVE_WHEEL.radius, WAVE_WHEEL.points_zone.left.max,WAVE_WHEEL.points_zone.left.min)
+    love.graphics.setColor(1,1,1,WAVE_WHEEL.points_zone.right.opacity)
+    love.graphics.arc("fill", CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y,WAVE_WHEEL.radius, WAVE_WHEEL.points_zone.right.max,WAVE_WHEEL.points_zone.right.min)
 
     -- Drawing the housing cover to the screen
     love.graphics.setColor(unpack(HOUSING.color))
@@ -457,11 +528,12 @@ function love.draw()
     love.graphics.line(CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y,NEEDLE.x,NEEDLE.y)
 
     -- Printing the team names and scored to the screen
-    love.graphics.setColor(0,0,0)
+    love.graphics.setColor(unpack(COLORS.BLACK))
+    love.graphics.setNewFont(60)
     love.graphics.printf("Team\n"..Team1.name, BOARD_WIDTH_OFFET + 50,BOARD_HEIGHT_OFFET + 25,200,"center")
     love.graphics.printf("Team\n"..Team2.name, BOARD_WIDTH_OFFET + BOARD_WIDTH - 250,BOARD_HEIGHT_OFFET + 25, 200, "center")
 
-    -- Print scored here
+    -- Print scores to the screen
 
     -- Draw Shield toggle button to the screen
     love.graphics.setColor(unpack(SHIELD_BUTTON.btn_color))
@@ -483,7 +555,6 @@ function love.draw()
         "center"
     )
 
-
     -- Drawing spin button to the screen
     love.graphics.setColor(unpack(SPIN_BUTTON.btn_color))
     love.graphics.rectangle("fill",
@@ -504,25 +575,56 @@ function love.draw()
         "center"
     )
 
-    -- Drawing Prompt
+    -- Drawing Prompts
+    local cardAreaOffset = 10
+    local cardAreaX = PROMPT_CARD.coords.top_left.x - cardAreaOffset
+    local cardAreaY = PROMPT_CARD.coords.top_left.y - cardAreaOffset
     local card_width = math.abs(PROMPT_CARD.coords.top_left.x - PROMPT_CARD.coords.bottom_right.x)/2
+    local card_height = math.abs(PROMPT_CARD.coords.top_left.y - PROMPT_CARD.coords.bottom_right.y)
+
+    love.graphics.setColor(COLORS.WHITE)
+    love.graphics.rectangle("fill",
+        cardAreaX,
+        cardAreaY,
+        card_width * 2 + cardAreaOffset * 2,
+        card_height + cardAreaOffset * 2,
+        cardAreaOffset,cardAreaOffset
+    )
+    
     local card_mid = PROMPT_CARD.coords.top_left.x + card_width
-    love.graphics.setColor(unpack(PROMPT_CARD.left.card_color))
+    love.graphics.setColor(PROMPT_CARD.left.card_color)
     love.graphics.rectangle("fill",
         PROMPT_CARD.coords.top_left.x,
         PROMPT_CARD.coords.top_left.y,
         card_width,
-        math.abs(PROMPT_CARD.coords.top_left.y - PROMPT_CARD.coords.bottom_right.y),
-        5,5
+        card_height,
+        cardAreaOffset,cardAreaOffset
     )
+    
 
-    love.graphics.setColor(unpack(PROMPT_CARD.right.card_color))
+    love.graphics.setColor(PROMPT_CARD.right.card_color)
     love.graphics.rectangle("fill",
         card_mid,
         PROMPT_CARD.coords.top_left.y,
         card_width,
         math.abs(PROMPT_CARD.coords.top_left.y - PROMPT_CARD.coords.bottom_right.y),
-        5,5
+        cardAreaOffset,cardAreaOffset
+    )
+
+    card_font = love.graphics.setNewFont(30)
+    love.graphics.setColor(PROMPT_CARD.text_color)
+    love.graphics.printf(
+        PROMPT_CARD.left.text,
+        PROMPT_CARD.coords.top_left.x,
+        PROMPT_CARD.coords.top_left.y + card_font.getHeight(card_font),
+        card_width,"center"
+    )
+
+    love.graphics.printf(
+        PROMPT_CARD.right.text,
+        card_mid,
+        PROMPT_CARD.coords.top_left.y + card_font.getHeight(card_font),
+        card_width,"center"
     )
 
     -- love.graphics.setNewFont(60)
@@ -547,6 +649,10 @@ end
 
 function love.mousepressed(x,y,button,istouch,presses)
     mouseCoords = {x,y}
+    local promtCardBtn = Button:new("",PROMPT_CARD.coords.top_left.x,PROMPT_CARD.coords.top_left.y,PROMPT_CARD.coords.bottom_right.x,PROMPT_CARD.coords.bottom_right.y)
+    local left_zone = WAVE_WHEEL.points_zone.left
+    local right_zone = WAVE_WHEEL.points_zone.right
+    
     if button == 1 then
         if mouseIsOnButton(mouseCoords,SHIELD_BUTTON) then --and GAME_STATE.Secret then
             SHIELD_BUTTON:isClicked(toggleShield,{text})
@@ -559,6 +665,27 @@ function love.mousepressed(x,y,button,istouch,presses)
 
         if mouseIsOnButton(mouseCoords, SPIN_BUTTON) then
             SPIN_BUTTON:isClicked(spinWheel)
+        end
+
+        if mouseIsOnButton(mouseCoords,promtCardBtn) then
+            setRandomPrompt()
+        end
+
+        if mouseIsOnArc(mouseCoords,left_zone) then
+            left_zone.selected = true
+            right_zone.selected = false
+            left_zone.opacity = 1
+            right_zone.opacity = 0
+            left_zone.opacity_delta = 0
+        elseif mouseIsOnArc(mouseCoords,right_zone) then
+            left_zone.selected = false
+            right_zone.selected = true
+            left_zone.opacity = 0
+            right_zone.opacity = 1
+            right_zone.opacity_delta = 0
+        else
+            left_zone.selected = false
+            right_zone.selected = false
         end
     end
 end
@@ -575,11 +702,46 @@ function print_table(table, level)
 end
 
 
+function findTheta(point)
+    local theta = 0
+    local mouseX, mouseY = unpack(point)
+
+    if mouseX == CIRCLE_ORIGIN.x and mouseY < CIRCLE_ORIGIN.y then
+        theta = math.rad(270)
+    elseif mouseX < CIRCLE_ORIGIN.x and mouseY == CIRCLE_ORIGIN.y then
+        theta = math.rad(180)
+    elseif mouseX > CIRCLE_ORIGIN.x and mouseY == CIRCLE_ORIGIN.y then
+        theta = math.rad(360)
+    else
+        local x = CIRCLE_ORIGIN.x - mouseX
+        local y = CIRCLE_ORIGIN.y - mouseY
+        local h = math.sqrt(x^2 + y^2)
+        
+        if mouseX < CIRCLE_ORIGIN.x then
+            theta = math.rad(180) + math.acos(x/h)
+        else
+            theta = math.rad(270) + math.asin(-x/h)
+        end
+    end
+
+    if mouseY > CIRCLE_ORIGIN.y then
+        theta = - theta
+    end
+   
+    return theta 
+end
+
+
 function findMidpoint(x1,y1,x2,y2)
     local x = (x1+x2)/2
     local y = (y1+y2)/2
 
     return x,y
+end
+
+
+function getDistance(x1,y1,x2,y2)
+    return math.sqrt((x1 - x2)^2 + (y1 - y2)^2)
 end
 
 
@@ -601,10 +763,19 @@ end
 
 function mouseIsOnKnob(mousePos)
     local mouseX, mouseY = unpack(mousePos)
-   
-    local distance = math.sqrt((mouseX - CIRCLE_ORIGIN.x)^2 + (mouseY - CIRCLE_ORIGIN.y)^2)
-    
-    return distance < NEEDLE.knob_radius
+    return getDistance(mouseX,mouseY,CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y) < NEEDLE.knob_radius
+end
+
+
+function mouseIsOnArc(mousePos,arc)
+    local mouseX, mouseY = unpack(mousePos)
+    local hovering = false
+    if getDistance(mouseX,mouseY,CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y) < WAVE_WHEEL.radius then
+        local theta = findTheta(mousePos)
+        hovering = theta >= arc.min and theta <= arc.max 
+    end
+
+    return hovering
 end
 
 
@@ -624,6 +795,13 @@ end
 
 function spinWheel()
     if not WAVE_WHEEL.isSpinning then
-        WAVE_WHEEL.speed = WAVE_WHEEL.speed + math.random(5,15)
+        WAVE_WHEEL.speed = math.random(5,10)
     end
+end
+
+
+function setRandomPrompt()
+    local prompt = prompt_list[math.random(#prompt_list)]
+    PROMPT_CARD.left.text = prompt[1]
+    PROMPT_CARD.right.text = prompt[2]
 end
