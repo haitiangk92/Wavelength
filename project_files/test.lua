@@ -7,3 +7,8 @@ function print_table(table, level)
         end
     end
 end
+
+forceFalse = false
+forceTrue = true
+
+print(forceFalse and 7 or 8)
