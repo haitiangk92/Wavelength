@@ -91,10 +91,6 @@ NEEDLE = {
     knob_radius = 60
 }
 
-HOUSING= {
-    color = COLORS.DARK_BLUE,
-}
-
 SHIELD = {
     color = COLORS.LIGHT_BLUE,
     starting_angle = 0,
@@ -135,6 +131,16 @@ WAVE_WHEEL = {
     }
 }
 
+HOUSING= {
+    color = COLORS.DARK_BLUE,
+    vertices = {
+        CIRCLE_ORIGIN.x - WAVE_WHEEL.radius, CIRCLE_ORIGIN.y,
+        CIRCLE_ORIGIN.x + WAVE_WHEEL.radius, CIRCLE_ORIGIN.y,
+        CIRCLE_ORIGIN.x + WAVE_WHEEL.radius - 80, CIRCLE_ORIGIN.y + WAVE_WHEEL.radius + 80,
+        CIRCLE_ORIGIN.x - WAVE_WHEEL.radius + 80, CIRCLE_ORIGIN.y+ WAVE_WHEEL.radius + 80 
+    }
+}
+
 GAME_STATE = 0
 GAME_STATES = {
     PREP = 0,
@@ -142,7 +148,7 @@ GAME_STATES = {
     SECRET = 2,
     GUESS = 3,
     CHALLENGE = 4,
-    REAVEAL = 5
+    REVEAL = 5
 }
 
 local shield_transformation = -3
@@ -507,12 +513,7 @@ function love.draw()
     love.graphics.setColor(unpack(HOUSING.color))
     love.graphics.setLineWidth(35)
     love.graphics.circle("line",CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y,WAVE_WHEEL.radius)
-    love.graphics.polygon("fill",
-        CIRCLE_ORIGIN.x - WAVE_WHEEL.radius,CIRCLE_ORIGIN.y,
-        CIRCLE_ORIGIN.x + WAVE_WHEEL.radius,CIRCLE_ORIGIN.y,
-        CIRCLE_ORIGIN.x + WAVE_WHEEL.radius - 80,CIRCLE_ORIGIN.y + WAVE_WHEEL.radius + 80,
-        CIRCLE_ORIGIN.x - WAVE_WHEEL.radius + 80,CIRCLE_ORIGIN.y+ WAVE_WHEEL.radius + 80        
-    )
+    love.graphics.polygon("fill", HOUSING.vertices)
 
     -- Drawing the shield handle to the screen
     love.graphics.setColor(unpack(SHIELD.color))
@@ -581,7 +582,8 @@ function love.draw()
     local cardAreaY = PROMPT_CARD.coords.top_left.y - cardAreaOffset
     local card_width = math.abs(PROMPT_CARD.coords.top_left.x - PROMPT_CARD.coords.bottom_right.x)/2
     local card_height = math.abs(PROMPT_CARD.coords.top_left.y - PROMPT_CARD.coords.bottom_right.y)
-
+    local card_mid = PROMPT_CARD.coords.top_left.x + card_width
+    
     love.graphics.setColor(COLORS.WHITE)
     love.graphics.rectangle("fill",
         cardAreaX,
@@ -591,7 +593,6 @@ function love.draw()
         cardAreaOffset,cardAreaOffset
     )
     
-    local card_mid = PROMPT_CARD.coords.top_left.x + card_width
     love.graphics.setColor(PROMPT_CARD.left.card_color)
     love.graphics.rectangle("fill",
         PROMPT_CARD.coords.top_left.x,
@@ -601,7 +602,6 @@ function love.draw()
         cardAreaOffset,cardAreaOffset
     )
     
-
     love.graphics.setColor(PROMPT_CARD.right.card_color)
     love.graphics.rectangle("fill",
         card_mid,
@@ -626,17 +626,6 @@ function love.draw()
         PROMPT_CARD.coords.top_left.y + card_font.getHeight(card_font),
         card_width,"center"
     )
-
-    -- love.graphics.setNewFont(60)
-    -- love.graphics.setColor(SPIN_BUTTON.txt_color)
-    -- love.graphics.printf(
-    --     SPIN_BUTTON.text, 
-    --     SPIN_BUTTON.coords.top_left.x,
-    --     SPIN_BUTTON.coords.top_left.y + 5,
-    --     math.abs(SPIN_BUTTON.coords.top_left.x - SPIN_BUTTON.coords.bottom_right.x),
-    --     "center"
-    -- )
-
 end
 
 
@@ -648,36 +637,43 @@ end
 
 
 function love.mousepressed(x,y,button,istouch,presses)
-    mouseCoords = {x,y}
-    local promtCardBtn = Button:new("",PROMPT_CARD.coords.top_left.x,PROMPT_CARD.coords.top_left.y,PROMPT_CARD.coords.bottom_right.x,PROMPT_CARD.coords.bottom_right.y)
+    local mouseCoords = {x,y}
+    local promtCardBtn = Button:new(
+        "",
+        PROMPT_CARD.coords.top_left.x,
+        PROMPT_CARD.coords.top_left.y,
+        PROMPT_CARD.coords.bottom_right.x,
+        PROMPT_CARD.coords.bottom_right.y
+    )
+
     local left_zone = WAVE_WHEEL.points_zone.left
     local right_zone = WAVE_WHEEL.points_zone.right
     
     if button == 1 then
-        if mouseIsOnButton(mouseCoords,SHIELD_BUTTON) then --and GAME_STATE.Secret then
+        if mouseIsOnButton(mouseCoords,SHIELD_BUTTON) then --and GAME_STATE == GAME_STATES.SECRET then
             SHIELD_BUTTON:isClicked(toggleShield,{text})
         end
 
-        if mouseIsOnKnob(mouseCoords) then
+        if mouseIsOnKnob(mouseCoords) then -- and GAMESTATE == GAMESTATES.GUESS then
            follow_mouseX = true 
            last_mouse_point = y
         end
 
-        if mouseIsOnButton(mouseCoords, SPIN_BUTTON) then
+        if mouseIsOnButton(mouseCoords, SPIN_BUTTON) then --and GAME_STATE == GAME_STATES.SPIN then
             SPIN_BUTTON:isClicked(spinWheel)
         end
 
-        if mouseIsOnButton(mouseCoords,promtCardBtn) then
+        if mouseIsOnButton(mouseCoords,promtCardBtn) then --and GAME_STATE == GAME_STATES.PREP then
             setRandomPrompt()
         end
 
-        if mouseIsOnArc(mouseCoords,left_zone) then
+        if mouseIsOnArc(mouseCoords,left_zone) then --and GAME_STATE == GAME_STATES.CHALLENGE then
             left_zone.selected = true
             right_zone.selected = false
             left_zone.opacity = 1
             right_zone.opacity = 0
             left_zone.opacity_delta = 0
-        elseif mouseIsOnArc(mouseCoords,right_zone) then
+        elseif mouseIsOnArc(mouseCoords,right_zone) then --and GAME_STATE == GAME_STATES.CHALLENGE then
             left_zone.selected = false
             right_zone.selected = true
             left_zone.opacity = 0
