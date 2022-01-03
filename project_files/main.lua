@@ -137,7 +137,7 @@ HOUSING= {
         CIRCLE_ORIGIN.x - WAVE_WHEEL.radius, CIRCLE_ORIGIN.y,
         CIRCLE_ORIGIN.x + WAVE_WHEEL.radius, CIRCLE_ORIGIN.y,
         CIRCLE_ORIGIN.x + WAVE_WHEEL.radius - 80, CIRCLE_ORIGIN.y + WAVE_WHEEL.radius + 80,
-        CIRCLE_ORIGIN.x - WAVE_WHEEL.radius + 80, CIRCLE_ORIGIN.y+ WAVE_WHEEL.radius + 80 
+        CIRCLE_ORIGIN.x - WAVE_WHEEL.radius + 80, CIRCLE_ORIGIN.y + WAVE_WHEEL.radius + 80 
     }
 }
 
