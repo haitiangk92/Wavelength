@@ -13,3 +13,5 @@ Small,Big
 Bald,Hairy
 Tall Person,Short Person
 Unpopular,Popular
+Science Fiction,Fantasy
+Worst Movie,Best Movie
