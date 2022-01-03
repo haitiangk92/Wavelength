@@ -1,5 +1,3 @@
---- @diagnostic disable: deprecated
-
 Colors = require "Colors"
 Team = require "Team"
 Player = require "Player"
@@ -48,7 +46,7 @@ end
 
 NUM_TRIANGLES = 5
 TRIANGLES = {}
-TRIANGLE_Colors = {
+TRIANGLE_COLORS = {
     Colors.GREEN,
     Colors.PURPLE,
     Colors.ORANGE
@@ -151,16 +149,16 @@ GAME_STATES = {
     REVEAL = 5
 }
 
-left_arc = WAVE_WHEEL.points_zone.left
-right_arc = WAVE_WHEEL.points_zone.right
+LEFT_ARC = WAVE_WHEEL.points_zone.left
+RIGHT_ARC = WAVE_WHEEL.points_zone.right
 
 local shield_transformation = -3
-local delta = (math.rad(1) - math.rad(0)) * -shield_transformation
+DELTA = (math.rad(1) - math.rad(0)) * -shield_transformation
 local shield_name_selector = 1
 
-Team1 = Team:new("1")
-Team2 = Team:new("2")
-local prompt_list = Prompt_List:new()
+TEAM1 = Team:new("1")
+TEAM2 = Team:new("2")
+PROMPT_LIST = Prompt_List:new()
 
 SHIELD_BUTTON = Button:new()
 SPIN_BUTTON = Button:new()
@@ -189,27 +187,27 @@ PROMPT_CARD = {
 
 
 function love.keypressed(key)
-    if key == 'escape' then
+    if key == 'escape' or key == "return" then
         love.event.quit()
     end
 end
 
-local function mouseIsOnButton(mousePos,button)
+
+function mouseIsOnButton(mousePos,button)
     local mouseX, mouseY = unpack(mousePos)
     local hovering = false
 
     if mouseX >= button.coords.top_left.x and 
-        mouseX <= button.coords.bottom_right.x and
-        mouseY >= button.coords.top_left.y and 
-        mouseY <= button.coords.bottom_right.y then
-        
+            mouseX <= button.coords.bottom_right.x and
+            mouseY >= button.coords.top_left.y and 
+            mouseY <= button.coords.bottom_right.y then
         hovering = true
     end
 
     return hovering
 end
 
-local function findTheta(point)
+function findTheta(point)
     local theta = 0
     local mouseX, mouseY = unpack(point)
 
@@ -239,21 +237,18 @@ local function findTheta(point)
 end
 
 
-
-
-
-local function getDistance(x1,y1,x2,y2)
+function getDistance(x1,y1,x2,y2)
     return math.sqrt((x1 - x2)^2 + (y1 - y2)^2)
 end
 
 
-local function mouseIsOnKnob(mousePos)
+function mouseIsOnKnob(mousePos)
     local mouseX, mouseY = unpack(mousePos)
     return getDistance(mouseX,mouseY,CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y) < NEEDLE.knob_radius
 end
 
 
-local function mouseIsOnArc(mousePos,arc)
+function mouseIsOnArc(mousePos,arc)
     local mouseX, mouseY = unpack(mousePos)
     local hovering = false
     if getDistance(mouseX,mouseY,CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y) < WAVE_WHEEL.radius then
@@ -265,7 +260,7 @@ local function mouseIsOnArc(mousePos,arc)
 end
 
 
-local function toggleShield()
+function toggleShield()
     local text = ""
     if shield_name_selector > 0 then
         text = "CLOSE"
@@ -280,15 +275,15 @@ local function toggleShield()
 end
 
 
-local function spinWheel()
+function spinWheel()
     if not WAVE_WHEEL.isSpinning then
         WAVE_WHEEL.speed = math.random(5,10)
     end
 end
 
 
-local function setRandomPrompt()
-    local prompt = prompt_list[math.random(#prompt_list)]
+function setRandomPrompt()
+    local prompt = PROMPT_LIST[math.random(#PROMPT_LIST)]
     PROMPT_CARD.left.text = prompt[1]
     PROMPT_CARD.right.text = prompt[2]
 end
@@ -345,7 +340,7 @@ function love.mousepressed(x,y,button,istouch,presses)
 end
 
 
-local function print_table(table, level)
+function print_table(table, level)
     level = level or 0
     for k, v in pairs(table) do
         print(string.rep("\t",level)..k, v)
@@ -448,7 +443,7 @@ function love.load()
 
         if color == 0 then color = 1 end
         
-        triangle.color = {unpack(TRIANGLE_Colors[color])}
+        triangle.color = TRIANGLE_COLORS[color]
         color = color + dx
 
         triangle.points.value = point_value
@@ -544,48 +539,48 @@ function love.update(dt)
     -- Show challenge opacity
     local dtt = 0.06
 
-    left_arc.max = NEEDLE.angle
-    if mouseIsOnArc({love.mouse.getPosition()},left_arc)then
-        if not left_arc.selected then
-            if left_arc.opacity >= 1 then
-                left_arc.opacity = 1
-                left_arc.opacity_delta = -dtt
-            elseif left_arc.opacity <= 0 then
-                left_arc.opacity = 0
-                left_arc.opacity_delta = dtt
+    LEFT_ARC.max = NEEDLE.angle
+    if mouseIsOnArc({love.mouse.getPosition()},LEFT_ARC)then
+        if not LEFT_ARC.selected then
+            if LEFT_ARC.opacity >= 1 then
+                LEFT_ARC.opacity = 1
+                LEFT_ARC.opacity_delta = -dtt
+            elseif LEFT_ARC.opacity <= 0 then
+                LEFT_ARC.opacity = 0
+                LEFT_ARC.opacity_delta = dtt
             end
         end
     else
-        if not left_arc.selected then
-            left_arc.opacity = 0
-            left_arc.opacity_delta = 0
+        if not LEFT_ARC.selected then
+            LEFT_ARC.opacity = 0
+            LEFT_ARC.opacity_delta = 0
         end
     end
-    left_arc.opacity = left_arc.opacity + left_arc.opacity_delta
+    LEFT_ARC.opacity = LEFT_ARC.opacity + LEFT_ARC.opacity_delta
     
-    right_arc.min = NEEDLE.angle
-    if mouseIsOnArc({love.mouse.getPosition()},right_arc) then
-        if not right_arc.selected then
-            if right_arc.opacity >= 1 then
-                right_arc.opacity = 1
-                right_arc.opacity_delta = -dtt
-            elseif right_arc.opacity <= 0 then
-                right_arc.opacity = 0
-                right_arc.opacity_delta = dtt
+    RIGHT_ARC.min = NEEDLE.angle
+    if mouseIsOnArc({love.mouse.getPosition()},RIGHT_ARC) then
+        if not RIGHT_ARC.selected then
+            if RIGHT_ARC.opacity >= 1 then
+                RIGHT_ARC.opacity = 1
+                RIGHT_ARC.opacity_delta = -dtt
+            elseif RIGHT_ARC.opacity <= 0 then
+                RIGHT_ARC.opacity = 0
+                RIGHT_ARC.opacity_delta = dtt
             end
         end
     else
-        if not right_arc.selected then
-            right_arc.opacity = 0
-            right_arc.opacity_delta = 0
+        if not RIGHT_ARC.selected then
+            RIGHT_ARC.opacity = 0
+            RIGHT_ARC.opacity_delta = 0
         end
     end
-    right_arc.opacity = right_arc.opacity + right_arc.opacity_delta
+    RIGHT_ARC.opacity = RIGHT_ARC.opacity + RIGHT_ARC.opacity_delta
 
     -- Openning/Closing the shield
     if SHIELD.transformation < 0 then
         if SHIELD.starting_angle ~= 0 and SHIELD.ending_angle ~= math.rad(180) then
-            if math.abs(SHIELD.starting_angle - math.rad(0)) < delta then
+            if math.abs(SHIELD.starting_angle - math.rad(0)) < DELTA then
                 SHIELD.starting_angle = 0
                 SHIELD.ending_angle = -math.rad(180)
                 SHIELD.transformation = 0
@@ -596,7 +591,7 @@ function love.update(dt)
         end
     else
         if SHIELD.starting_angle ~= math.rad(180) and SHIELD.ending_angle ~= 0 then
-            if math.abs(SHIELD.starting_angle - math.rad(180)) < delta then
+            if math.abs(SHIELD.starting_angle - math.rad(180)) < DELTA then
                 SHIELD.starting_angle = math.rad(180)
                 SHIELD.ending_angle = 0
                 SHIELD.transformation = 0
@@ -639,7 +634,7 @@ end
 ----------------------------------
 function love.draw()
     -- Setting background color
-    love.graphics.setBackgroundColor(unpack(Colors.PURPLE))
+    love.graphics.setBackgroundColor(Colors.PURPLE)
 
     -- Printing the title to the screen
     love.graphics.setColor(1,1,1)
@@ -647,7 +642,7 @@ function love.draw()
     love.graphics.print(TITLE,TITLE_WIDTH_OFFSET,TITLE_HEIGHT_OFFSET)
 
     -- Printing the game board to the screen
-    love.graphics.setColor(unpack(BOARD_COLOR))
+    love.graphics.setColor(BOARD_COLOR)
     love.graphics.rectangle('fill',BOARD_WIDTH_OFFET,BOARD_HEIGHT_OFFET,BOARD_WIDTH,BOARD_HEIGHT)
 
     -- Printing the wheel to the screen
@@ -670,7 +665,7 @@ function love.draw()
     end
 
     -- Drawing the shield to the screen
-    love.graphics.setColor(unpack(SHIELD.color))
+    love.graphics.setColor(SHIELD.color)
     love.graphics.arc("fill", CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y, WAVE_WHEEL.radius, SHIELD.starting_angle, SHIELD.ending_angle)
 
     -- Drawing challenge zone to the screen
@@ -680,13 +675,13 @@ function love.draw()
     love.graphics.arc("fill", CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y,WAVE_WHEEL.radius, WAVE_WHEEL.points_zone.right.max,WAVE_WHEEL.points_zone.right.min)
 
     -- Drawing the housing cover to the screen
-    love.graphics.setColor(unpack(HOUSING.color))
+    love.graphics.setColor(HOUSING.color)
     love.graphics.setLineWidth(35)
     love.graphics.circle("line",CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y,WAVE_WHEEL.radius)
     love.graphics.polygon("fill", HOUSING.vertices)
 
     -- Drawing the shield handle to the screen
-    love.graphics.setColor(unpack(SHIELD.color))
+    love.graphics.setColor(SHIELD.color)
     love.graphics.setLineWidth(SHIELD.handle.width)
     love.graphics.line(SHIELD.handle.inner_point.x,SHIELD.handle.inner_point.y,SHIELD.handle.outer_point.x,SHIELD.handle.outer_point.y)
     love.graphics.circle("fill", SHIELD.handle.inner_point.x,SHIELD.handle.inner_point.y, SHIELD.handle.width/2)
@@ -699,15 +694,16 @@ function love.draw()
     love.graphics.line(CIRCLE_ORIGIN.x,CIRCLE_ORIGIN.y,NEEDLE.x,NEEDLE.y)
 
     -- Printing the team names and scored to the screen
-    love.graphics.setColor(unpack(Colors.BLACK))
+    local NAME_WIDTH_MAX = 350
+    love.graphics.setColor(Colors.BLACK)
     love.graphics.setNewFont(60)
-    love.graphics.printf("Team\n"..Team1.name, BOARD_WIDTH_OFFET + 50,BOARD_HEIGHT_OFFET + 25,200,"center")
-    love.graphics.printf("Team\n"..Team2.name, BOARD_WIDTH_OFFET + BOARD_WIDTH - 250,BOARD_HEIGHT_OFFET + 25, 200, "center")
+    love.graphics.printf("Team\n"..TEAM1.name, BOARD_WIDTH_OFFET,BOARD_HEIGHT_OFFET + 25,NAME_WIDTH_MAX,"center")
+    love.graphics.printf("Team\n"..TEAM2.name, BOARD_WIDTH_OFFET + BOARD_WIDTH - NAME_WIDTH_MAX,BOARD_HEIGHT_OFFET + 25, NAME_WIDTH_MAX, "center")
 
     -- Print scores to the screen
 
     -- Draw Shield toggle button to the screen
-    love.graphics.setColor(unpack(SHIELD_BUTTON.btn_color))
+    love.graphics.setColor(SHIELD_BUTTON.btn_color)
     love.graphics.rectangle("fill",
         SHIELD_BUTTON.coords.top_left.x,
         SHIELD_BUTTON.coords.top_left.y,
@@ -727,7 +723,7 @@ function love.draw()
     )
 
     -- Drawing spin button to the screen
-    love.graphics.setColor(unpack(SPIN_BUTTON.btn_color))
+    love.graphics.setColor(SPIN_BUTTON.btn_color)
     love.graphics.rectangle("fill",
         SPIN_BUTTON.coords.top_left.x,
         SPIN_BUTTON.coords.top_left.y,
