@@ -4,6 +4,8 @@ Player = require "Player"
 Button = require "Button"
 Prompt_List = require  "Prompt_List"
 
+math.randomseed(os.time())
+
 WINDOW_WIDTH, WINDOW_HEIGHT = love.window.getDesktopDimensions()
 
 TITLE = "Wavelength"
@@ -86,7 +88,8 @@ NEEDLE = {
     width = 10,
     height = 250,
     angle = 0,
-    knob_radius = 60
+    knob_radius = 60,
+    was_clicked = false
 }
 
 SHIELD = {
@@ -158,6 +161,8 @@ local shield_name_selector = 1
 
 TEAM1 = Team:new("1")
 TEAM2 = Team:new("2")
+TEAMS = {TEAM1,TEAM2}
+local active_team = TEAMS[math.random(#TEAMS)]
 PROMPT_LIST = Prompt_List:new()
 
 SHIELD_BUTTON = Button:new()
@@ -184,6 +189,21 @@ PROMPT_CARD = {
         }
     } 
 }
+
+
+function table_length(table)
+    local length = 0
+    for _ in pairs(table) do
+        length = length + 1
+    end
+    return length
+end
+
+
+function next_state()
+    GAME_STATE = (GAME_STATE + 1) % table_length(GAME_STATES)
+    print(GAME_STATE)
+end
 
 
 function love.keypressed(key)
@@ -266,12 +286,17 @@ function toggleShield()
         text = "CLOSE"
     else
         text = "OPEN"
+        next_state()
     end
     shield_name_selector = -shield_name_selector
 
     shield_transformation = -shield_transformation
     SHIELD.transformation = shield_transformation
     SHIELD_BUTTON.text = text
+
+    if GAME_STATE == GAME_STATES.REVEAL then
+        -- calculate_points()
+    end
 end
 
 
@@ -303,35 +328,41 @@ function love.mousepressed(x,y,button,istouch,presses)
     local right_zone = WAVE_WHEEL.points_zone.right
     
     if button == 1 then
-        if mouseIsOnButton(mouseCoords,SHIELD_BUTTON) then --and GAME_STATE == GAME_STATES.SECRET then
+        if mouseIsOnButton(mouseCoords,SHIELD_BUTTON) and (GAME_STATE == GAME_STATES.SECRET or GAME_STATE == GAME_STATES.REVEAL) then
+            left_zone.opacity = 0
+            right_zone.opacity = 0
             SHIELD_BUTTON:isClicked(toggleShield)
         end
 
-        if mouseIsOnKnob(mouseCoords) then -- and GAMESTATE == GAMESTATES.GUESS then
+        if mouseIsOnKnob(mouseCoords) and GAME_STATE == GAME_STATES.GUESS then
            follow_mouseX = true 
            last_mouse_point = y
+           NEEDLE.was_clicked = true
         end
 
-        if mouseIsOnButton(mouseCoords, SPIN_BUTTON) then --and GAME_STATE == GAME_STATES.SPIN then
+        if mouseIsOnButton(mouseCoords, SPIN_BUTTON) and GAME_STATE == GAME_STATES.PREP then
+            next_state()
             SPIN_BUTTON:isClicked(spinWheel)
         end
 
-        if mouseIsOnButton(mouseCoords,promtCardBtn) then --and GAME_STATE == GAME_STATES.PREP then
+        if mouseIsOnButton(mouseCoords,promtCardBtn) and GAME_STATE == GAME_STATES.PREP then
             setRandomPrompt()
         end
 
-        if mouseIsOnArc(mouseCoords,left_zone) then --and GAME_STATE == GAME_STATES.CHALLENGE then
+        if mouseIsOnArc(mouseCoords,left_zone) and GAME_STATE == GAME_STATES.CHALLENGE then
             left_zone.selected = true
             right_zone.selected = false
             left_zone.opacity = 1
             right_zone.opacity = 0
             left_zone.opacity_delta = 0
-        elseif mouseIsOnArc(mouseCoords,right_zone) then --and GAME_STATE == GAME_STATES.CHALLENGE then
+            next_state()
+        elseif mouseIsOnArc(mouseCoords,right_zone) and GAME_STATE == GAME_STATES.CHALLENGE then
             left_zone.selected = false
             right_zone.selected = true
             left_zone.opacity = 0
             right_zone.opacity = 1
             right_zone.opacity_delta = 0
+            next_state()
         else
             left_zone.selected = false
             right_zone.selected = false
@@ -355,8 +386,6 @@ end
 --- Sets up the original state of the game
 -----------------------------------------------
 function love.load()
-    math.randomseed(os.time())
-
     love.window.setTitle(TITLE)
     love.window.setMode(
         WINDOW_WIDTH,
@@ -511,6 +540,10 @@ function love.update(dt)
         WAVE_WHEEL.speed = 0
     end
 
+    if not WAVE_WHEEL.isSpinning and GAME_STATE == GAME_STATES.SPIN then
+        next_state()
+    end
+
     -- Spinning the wheel
     for i = 1, #SPOKES do
         local spoke = SPOKES[i]
@@ -537,45 +570,47 @@ function love.update(dt)
     end
 
     -- Show challenge opacity
-    local dtt = 0.06
+    if GAME_STATE == GAME_STATES.CHALLENGE then
+        local dtt = 0.06
 
-    LEFT_ARC.max = NEEDLE.angle
-    if mouseIsOnArc({love.mouse.getPosition()},LEFT_ARC)then
-        if not LEFT_ARC.selected then
-            if LEFT_ARC.opacity >= 1 then
-                LEFT_ARC.opacity = 1
-                LEFT_ARC.opacity_delta = -dtt
-            elseif LEFT_ARC.opacity <= 0 then
+        LEFT_ARC.max = NEEDLE.angle
+        if mouseIsOnArc({love.mouse.getPosition()},LEFT_ARC)then
+            if not LEFT_ARC.selected then
+                if LEFT_ARC.opacity >= 1 then
+                    LEFT_ARC.opacity = 1
+                    LEFT_ARC.opacity_delta = -dtt
+                elseif LEFT_ARC.opacity <= 0 then
+                    LEFT_ARC.opacity = 0
+                    LEFT_ARC.opacity_delta = dtt
+                end
+            end
+        else
+            if not LEFT_ARC.selected then
                 LEFT_ARC.opacity = 0
-                LEFT_ARC.opacity_delta = dtt
+                LEFT_ARC.opacity_delta = 0
             end
         end
-    else
-        if not LEFT_ARC.selected then
-            LEFT_ARC.opacity = 0
-            LEFT_ARC.opacity_delta = 0
-        end
-    end
-    LEFT_ARC.opacity = LEFT_ARC.opacity + LEFT_ARC.opacity_delta
-    
-    RIGHT_ARC.min = NEEDLE.angle
-    if mouseIsOnArc({love.mouse.getPosition()},RIGHT_ARC) then
-        if not RIGHT_ARC.selected then
-            if RIGHT_ARC.opacity >= 1 then
-                RIGHT_ARC.opacity = 1
-                RIGHT_ARC.opacity_delta = -dtt
-            elseif RIGHT_ARC.opacity <= 0 then
+        LEFT_ARC.opacity = LEFT_ARC.opacity + LEFT_ARC.opacity_delta
+        
+        RIGHT_ARC.min = NEEDLE.angle
+        if mouseIsOnArc({love.mouse.getPosition()},RIGHT_ARC) then
+            if not RIGHT_ARC.selected then
+                if RIGHT_ARC.opacity >= 1 then
+                    RIGHT_ARC.opacity = 1
+                    RIGHT_ARC.opacity_delta = -dtt
+                elseif RIGHT_ARC.opacity <= 0 then
+                    RIGHT_ARC.opacity = 0
+                    RIGHT_ARC.opacity_delta = dtt
+                end
+            end
+        else
+            if not RIGHT_ARC.selected then
                 RIGHT_ARC.opacity = 0
-                RIGHT_ARC.opacity_delta = dtt
+                RIGHT_ARC.opacity_delta = 0
             end
         end
-    else
-        if not RIGHT_ARC.selected then
-            RIGHT_ARC.opacity = 0
-            RIGHT_ARC.opacity_delta = 0
-        end
+        RIGHT_ARC.opacity = RIGHT_ARC.opacity + RIGHT_ARC.opacity_delta
     end
-    RIGHT_ARC.opacity = RIGHT_ARC.opacity + RIGHT_ARC.opacity_delta
 
     -- Openning/Closing the shield
     if SHIELD.transformation < 0 then
@@ -608,7 +643,7 @@ function love.update(dt)
     SHIELD.handle.outer_point.y = CIRCLE_ORIGIN.y + (math.sin(SHIELD.ending_angle) * SHIELD.handle.outer_point.radius)
 
     -- Moving the needle
-    if love.mouse.isDown(1) then
+    if love.mouse.isDown(1) and GAME_STATE == GAME_STATES.GUESS then
         if follow_mouseX then
             local currentMouseX, currentMouseY = love.mouse.getPosition()
             local deltaMouseY = last_mouse_point - currentMouseY
@@ -621,6 +656,10 @@ function love.update(dt)
         end
     else
         follow_mouseX = false
+        if NEEDLE.was_clicked then
+            next_state()
+            NEEDLE.was_clicked = false
+        end
     end
     -- Add points
 
@@ -695,10 +734,15 @@ function love.draw()
 
     -- Printing the team names and scored to the screen
     local NAME_WIDTH_MAX = 350
+    local TEAM2_X = BOARD_WIDTH_OFFET + BOARD_WIDTH - NAME_WIDTH_MAX
     love.graphics.setColor(Colors.BLACK)
     love.graphics.setNewFont(60)
     love.graphics.printf("Team\n"..TEAM1.name, BOARD_WIDTH_OFFET,BOARD_HEIGHT_OFFET + 25,NAME_WIDTH_MAX,"center")
-    love.graphics.printf("Team\n"..TEAM2.name, BOARD_WIDTH_OFFET + BOARD_WIDTH - NAME_WIDTH_MAX,BOARD_HEIGHT_OFFET + 25, NAME_WIDTH_MAX, "center")
+    love.graphics.printf("Team\n"..TEAM2.name, TEAM2_X,BOARD_HEIGHT_OFFET + 25, NAME_WIDTH_MAX, "center")
+
+    love.graphics.setColor(Colors.YELLOW)
+    love.graphics.setLineWidth(5)
+    love.graphics.rectangle("line", (active_team == TEAM1) and (BOARD_WIDTH_OFFET + 10) or TEAM2_X, BOARD_HEIGHT_OFFET + 20, NAME_WIDTH_MAX - 10, NAME_WIDTH_MAX/2,30,30)
 
     -- Print scores to the screen
 
